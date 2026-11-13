@@ -6,10 +6,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          repository: brunodev85/winlator
-          ref: fb66541b93a4eb3ee585a433b4c7b20544d58e40
-          submodules: recursive
+        with: {repository: brunodev85/winlator, ref: fb66541b93a4eb3ee585a433b4c7b20544d58e40, submodules: recursive}
       - name: Verify pinned source commits
         run: |
           test "$(git rev-parse HEAD)" = fb66541b93a4eb3ee585a433b4c7b20544d58e40
@@ -20,12 +17,12 @@ jobs:
         with: {distribution: temurin, java-version: '17'}
       - uses: android-actions/setup-android@v3
         with: {accept-android-sdk-licenses: false, packages: ''}
-      - name: Accept licenses; install Android SDK 34, NDK 24, CMake 3.22.1, adb
+      - name: Accept licenses and install Android SDK 34, NDK 24, CMake 3.22.1, adb
         shell: bash
         run: |
           set +o pipefail; yes | sdkmanager --licenses >/dev/null; set -o pipefail
           sdkmanager --install 'platform-tools' 'platforms;android-34' 'ndk;24.0.8215888' 'cmake;3.22.1'
-      - name: Clean debug build
-        run: cd app && ./gradlew --no-daemon clean assembleDebug
+      - name: Build debug APK
+        run: cd app && bash gradlew --no-daemon clean assembleDebug
       - uses: actions/upload-artifact@v4
         with: {name: winlator-debug-apk, path: app/app/build/outputs/apk/debug/*.apk, if-no-files-found: error}
