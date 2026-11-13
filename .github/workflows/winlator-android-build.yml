@@ -22,7 +22,10 @@ jobs:
         run: |
           set +o pipefail; yes | sdkmanager --licenses >/dev/null; set -o pipefail
           sdkmanager --install 'platform-tools' 'platforms;android-34' 'ndk;24.0.8215888' 'cmake;3.22.1'
-      - name: Build debug APK
-        run: cd app && bash gradlew --no-daemon clean assembleDebug
+      - name: Build debug APK (temporary duplicate FLAC pickFirst)
+        shell: bash
+        run: |
+          printf '%s\n' "allprojects { afterEvaluate { if (plugins.hasPlugin('com.android.application')) android.packagingOptions.jniLibs.pickFirsts += 'lib/arm64-v8a/libFLAC.so' } }" > "$RUNNER_TEMP/packaging.gradle"
+          cd app && bash gradlew -I "$RUNNER_TEMP/packaging.gradle" --no-daemon clean assembleDebug
       - uses: actions/upload-artifact@v4
         with: {name: winlator-debug-apk, path: app/app/build/outputs/apk/debug/*.apk, if-no-files-found: error}
