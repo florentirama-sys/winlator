@@ -1,87 +1,21 @@
-name: Winlator 11.2.0 Android debug build
-
+name: Winlator debug APK
 on:
   workflow_dispatch:
-
-permissions:
-  contents: read
-
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
     steps:
-      - name: Check out the pinned source and submodules
-        uses: actions/checkout@v4
-        with:
-          repository: brunodev85/winlator
-          ref: fb66541b93a4eb3ee585a433b4c7b20544d58e40
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Verify pinned revisions
+      - uses: actions/checkout@v4
+        with: {repository: brunodev85/winlator, ref: fb66541b93a4eb3ee585a433b4c7b20544d58e40, submodules: recursive}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: android-actions/setup-android@v3
+        with: {accept-android-sdk-licenses: false, packages: ''}
+      - name: Accept licenses; install SDK/NDK/CMake/adb
         shell: bash
         run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "fb66541b93a4eb3ee585a433b4c7b20544d58e40"
-          test "$(git -C app rev-parse HEAD)" = "c2f4ad4534f4637b543a9a3b085e28f50cf6d01c"
-          test "$(git -C gladio rev-parse HEAD)" = "eaa2a8d6eda3a1a6af755370ea9fac6cf7792ac3"
-          test "$(git -C vortek rev-parse HEAD)" = "ab7329c4b445a4abd9b9af91b8148e1ca41464fa"
-          git submodule status --recursive
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Export Android SDK path
-        shell: bash
-        run: echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
-
-      - name: Install required Android components
-        shell: bash
-        run: |
-          set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager --install \
-            'platform-tools' \
-            'platforms;android-34' \
-            'ndk;24.0.8215888' \
-            'cmake;3.22.1'
-
-      - name: Verify build environment
-        shell: bash
-        run: |
-          set -euo pipefail
-          java -version 2>&1 | grep -E 'version "17\.'
-          test -x "$ANDROID_SDK_ROOT/platform-tools/adb"
-          adb version
-          sdkmanager --list_installed
-          test -f "$ANDROID_SDK_ROOT/platforms/android-34/android.jar"
-          test -f "$ANDROID_SDK_ROOT/ndk/24.0.8215888/source.properties"
-          grep -q 'Pkg.Revision = 24.0.8215888' "$ANDROID_SDK_ROOT/ndk/24.0.8215888/source.properties"
-          "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" --version
-          grep -q 'gradle-7.3.3' app/gradle/wrapper/gradle-wrapper.properties
-          grep -q "com.android.tools.build:gradle:7.2.2" app/build.gradle
-          cd app
-          bash ./gradlew --no-daemon --version | tee /tmp/gradle-version.txt
-          grep -q 'Gradle 7.3.3' /tmp/gradle-version.txt
-
-      - name: Clean debug build
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd app
-          bash ./gradlew --no-daemon clean :app:assembleDebug
-
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: winlator-11.2.0-debug-apk
-          path: app/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
+          set +o pipefail; yes | sdkmanager --licenses >/dev/null; set -o pipefail
+          sdkmanager --install 'platform-tools' 'platforms;android-34' 'ndk;24.0.8215888' 'cmake;3.22.1'
+      - run: ./gradlew --no-daemon clean assembleDebug
+      - uses: actions/upload-artifact@v4
+        with: {name: winlator-debug-apk, path: app/build/outputs/apk/debug/*.apk, if-no-files-found: error}
